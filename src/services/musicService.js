@@ -11,6 +11,7 @@ import { logger } from '../utils/logger.js';
 import { EmbedBuilder, ActivityType } from 'discord.js';
 import { InteractionHelper } from '../utils/interactionHelper.js';
 import config from '../config/application.js';
+import { joinAndMaintain } from './voice247Service.js';
 
 // Map to store guild music queues
 // Structure: Map<guildId, { queue: Array, player: AudioPlayer, currentSong: Object, textChannel: Object }>
@@ -42,10 +43,19 @@ export async function skipSong(guildId) {
 export async function addAndPlay(interaction, guildId, query) {
     let queueData = queues.get(guildId);
     
-    // Check if connected to voice
-    const connection = getVoiceConnection(guildId);
+    let connection = getVoiceConnection(guildId);
     if (!connection) {
-        return { success: false, message: 'I need to be in a voice channel first! Use `w!join`.' };
+        // Auto-join if not connected
+        const member = await interaction.guild.members.fetch(interaction.user.id).catch(() => null);
+        const voiceChannel = member?.voice?.channel;
+        if (!voiceChannel) {
+            return { success: false, message: 'I need to be in a voice channel first! Join a voice channel so I can follow you.' };
+        }
+        const joined = await joinAndMaintain(interaction.client, interaction.guild, voiceChannel.id);
+        if (!joined) {
+            return { success: false, message: 'Failed to automatically join your voice channel. Check my permissions.' };
+        }
+        connection = getVoiceConnection(guildId);
     }
 
     // Search and validate
@@ -54,19 +64,36 @@ export async function addAndPlay(interaction, guildId, query) {
         const isUrl = query.startsWith('http');
         if (isUrl) {
             if (query.includes('youtube.com') || query.includes('youtu.be')) {
-                // Try YouTube URL
-                const ytInfo = await play.video_info(query);
+                const ytInfo = await Promise.race([
+                    play.video_info(query),
+                    new Promise((_, reject) => setTimeout(() => reject(new Error('TIMEOUT')), 5000))
+                ]);
                 songInfo = ytInfo.video_details;
             } else {
-                // Try SoundCloud or other URLs
-                const info = await play.soundcloud(query);
+                const info = await Promise.race([
+                    play.soundcloud(query),
+                    new Promise((_, reject) => setTimeout(() => reject(new Error('TIMEOUT')), 5000))
+                ]);
                 songInfo = info;
             }
         } else {
-            // Search SoundCloud by default to bypass YouTube Data Center IP Blocks (429)
-            const searchResults = await play.search(query, { limit: 1, source: { soundcloud: 'tracks' } });
+            let searchResults;
+            try {
+                searchResults = await Promise.race([
+                    play.search(query, { limit: 1, source: { soundcloud: 'tracks' } }),
+                    new Promise((_, reject) => setTimeout(() => reject(new Error('TIMEOUT')), 5000))
+                ]);
+            } catch (err) {
+                // Fallback to YouTube if SoundCloud hangs
+                logger.warn('SoundCloud search timed out, falling back to YouTube');
+                searchResults = await Promise.race([
+                    play.search(query, { limit: 1 }),
+                    new Promise((_, reject) => setTimeout(() => reject(new Error('TIMEOUT')), 5000))
+                ]);
+            }
+            
             if (!searchResults || searchResults.length === 0) {
-                return { success: false, message: 'Could not find any matching songs on SoundCloud.' };
+                return { success: false, message: 'Could not find any matching songs.' };
             }
             songInfo = searchResults[0];
         }
