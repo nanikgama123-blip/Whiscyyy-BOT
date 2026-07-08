@@ -147,9 +147,13 @@ export function mapArgumentsToOptions(args, commandData) {
 
   for (let i = 0; i < Math.min(currentArgs.length, optionDefs.length); i++) {
     const optionDef = optionDefs[i];
-    const value = currentArgs[i];
     
-    options[optionDef.name] = value;
+    // Jika ini adalah opsi terakhir dan tipenya String (3), gabungkan semua sisa argumen
+    if (i === optionDefs.length - 1 && optionDef.type === 3) {
+      options[optionDef.name] = currentArgs.slice(i).join(' ');
+    } else {
+      options[optionDef.name] = currentArgs[i];
+    }
   }
 
   const missing = [];
