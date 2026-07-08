@@ -147,9 +147,6 @@ export async function addAndPlay(interaction, guildId, query) {
             client: interaction.client,
         };
 
-        // Subscribe connection to player
-        connection.subscribe(queueData.player);
-
         // Player Event Listeners
         queueData.player.on(AudioPlayerStatus.Idle, async () => {
             queueData.currentSong = null;
@@ -176,6 +173,12 @@ export async function addAndPlay(interaction, guildId, query) {
         });
 
         queues.set(guildId, queueData);
+    }
+
+    // Always ensure the active connection is subscribed to the player
+    // This fixes the "playing but no sound" bug after an auto-join reconnection
+    if (connection && queueData.player) {
+        connection.subscribe(queueData.player);
     }
 
     queueData.textChannel = interaction.channel; // Update text channel
