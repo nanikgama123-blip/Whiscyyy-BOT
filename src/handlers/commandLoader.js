@@ -266,9 +266,23 @@ async function registerGuildCommands(client, guildId, commands, totalSubcommands
     validateCommands(commands);
     logger.info('Command validation passed');
 
-    const guild = await client.guilds.fetch(guildId);
-    const existingCommands = await guild.commands.fetch();
-    logger.info(`Found ${existingCommands.size} existing guild commands`);
+    let guild;
+    try {
+        guild = await client.guilds.fetch(guildId);
+    } catch (err) {
+        logger.error(`Failed to fetch guild ${guildId} for command registration. DiscordAPIError[10004]: Unknown Guild.`);
+        logger.error(`Please ensure the bot is invited to this server or check if GUILD_ID is correct.`);
+        return;
+    }
+    
+    let existingCommands;
+    try {
+        existingCommands = await guild.commands.fetch();
+        logger.info(`Found ${existingCommands.size} existing guild commands`);
+    } catch (err) {
+        logger.error(`Failed to fetch existing commands for guild ${guildId}`);
+        existingCommands = new Collection();
+    }
 
     const commandsToRegister = prepareCommandsForRegistration(commands, { multiGuild: false });
 
