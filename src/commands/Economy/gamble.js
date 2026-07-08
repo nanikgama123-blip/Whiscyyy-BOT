@@ -78,6 +78,15 @@ async function handleCoinflip(interaction, client, data, amount, userId, guildId
 
   await setWhiscyData(client, guildId, userId, data);
 
+  const animEmbed = new EmbedBuilder()
+    .setColor('#f1c40f')
+    .setTitle('🪙 Tossing the coin...')
+    .setDescription('The coin is flipping high into the air... 🌪️')
+    .setFooter({ text: `Betting ${amount.toLocaleString()} whiscy 🪙` });
+
+  await InteractionHelper.safeEditReply(interaction, { embeds: [animEmbed] });
+  await new Promise(resolve => setTimeout(resolve, 2500));
+
   logger.info(`[GAMBLE] Coinflip: ${userId} ${won ? 'won' : 'lost'} ${amount} whiscy`, {
     guildId, userId, won, amount,
   });
@@ -131,6 +140,18 @@ async function handleSlots(interaction, client, data, amount, userId, guildId) {
   }
 
   await setWhiscyData(client, guildId, userId, data);
+
+  const animEmbed = new EmbedBuilder()
+    .setColor('#f1c40f')
+    .setTitle('🎰 Slot Machine')
+    .setDescription(
+      `> 🔄 │ 🔄 │ 🔄\n\n` +
+      `Spinning the slots... 😵‍💫`
+    )
+    .setFooter({ text: `Betting ${amount.toLocaleString()} whiscy 🪙` });
+
+  await InteractionHelper.safeEditReply(interaction, { embeds: [animEmbed] });
+  await new Promise(resolve => setTimeout(resolve, 2500));
 
   logger.info(`[GAMBLE] Slots: ${userId} ${multiplier > 0 ? 'won' : 'lost'}, multiplier=${multiplier}`, {
     guildId, userId, amount, multiplier, results,
