@@ -1,6 +1,6 @@
 {
   "name": "titanbot",
-  "version": "2.1.2-MusicFix",
+  "version": "2.1.3-SCAuth",
   "description": "Modular Ultimate Community Bot by Touchpoint Support",
   "main": "src/app.js",
   "type": "module",

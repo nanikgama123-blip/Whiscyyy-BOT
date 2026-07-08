@@ -40,7 +40,27 @@ export async function skipSong(guildId) {
     return true;
 }
 
+let soundcloudInitialized = false;
+
+async function initSoundCloud() {
+    if (soundcloudInitialized) return;
+    try {
+        const clientID = await play.getFreeClientID();
+        play.setToken({
+            soundcloud: {
+                client_id: clientID
+            }
+        });
+        soundcloudInitialized = true;
+        logger.info('[Music] SoundCloud Client ID initialized successfully');
+    } catch (e) {
+        logger.error('[Music] Failed to initialize SoundCloud Client ID:', e);
+    }
+}
+
 export async function addAndPlay(interaction, guildId, query) {
+    await initSoundCloud(); // Initialize SoundCloud dynamically
+
     let queueData = queues.get(guildId);
     
     let connection = getVoiceConnection(guildId);
