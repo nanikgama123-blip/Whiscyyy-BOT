@@ -30,7 +30,7 @@ export default {
       await InteractionHelper.safeDefer(interaction);
 
       // Pastikan hanya owner bot yang bisa mengeksekusi
-      if (!config.bot.commands.owners.includes(interaction.user.id)) {
+      if (!client.config.bot.commands.owners.includes(interaction.user.id)) {
         const embed = new EmbedBuilder()
           .setColor('#e74c3c')
           .setDescription('❌ Only the bot owner can use this command.');
