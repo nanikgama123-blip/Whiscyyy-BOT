@@ -38,13 +38,7 @@ export const botConfig = {
       url: null,
     },
   },
-  economy: {
-    currency: {
-      name: "whiscy",
-      namePlural: "whiscy",
-      symbol: "🪙",
-    },
-  },
+
   messages: {
     noPermission: "You do not have permission to use this command.",
     cooldownActive: "Please wait {time} before using this command again.",
@@ -54,8 +48,8 @@ export const botConfig = {
     maintenanceMode: "The bot is currently in maintenance mode.",
   },
   features: {
-    economy: true,
-    leveling: true,
+    economy: false,
+    leveling: false,
     // All other features disabled
     moderation: false,
     logging: false,
