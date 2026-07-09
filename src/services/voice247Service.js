@@ -1,9 +1,14 @@
-import { 
     joinVoiceChannel, 
     getVoiceConnection, 
     VoiceConnectionStatus, 
-    entersState
+    entersState,
+    createAudioPlayer,
+    createAudioResource,
+    NoSubscriberBehavior,
+    AudioPlayerStatus,
+    StreamType
 } from '@discordjs/voice';
+import { Readable } from 'stream';
 import { logger } from '../utils/logger.js';
 
 export async function saveVoiceChannel(client, guildId, channelId) {
@@ -46,6 +51,26 @@ export async function joinAndMaintain(client, guild, channelId) {
             selfMute: false,
         });
 
+        // Trik Audio Hampa: Mencegah Discord menendang bot karena Idle/AFK
+        class SilenceStream extends Readable {
+            _read() {
+                this.push(Buffer.alloc(960 * 2 * 2)); // 960 frames, 2 channels, 16-bit
+            }
+        }
+        
+        const player = createAudioPlayer({
+            behaviors: { noSubscriber: NoSubscriberBehavior.Play }
+        });
+        const resource = createAudioResource(new SilenceStream(), { inputType: StreamType.Raw });
+        
+        player.play(resource);
+        connection.subscribe(player);
+
+        // Pastikan Audio Hampa terus berulang jika berhenti
+        player.on(AudioPlayerStatus.Idle, () => {
+            player.play(createAudioResource(new SilenceStream(), { inputType: StreamType.Raw }));
+        });
+
         connection.on(VoiceConnectionStatus.Disconnected, async (oldState, newState) => {
             try {
                 // Wait to see if it's just a channel move or network dip
@@ -54,9 +79,11 @@ export async function joinAndMaintain(client, guild, channelId) {
                     entersState(connection, VoiceConnectionStatus.Connecting, 5_000),
                 ]);
             } catch (error) {
-                // Connection died. Destroy and try to reconnect
-                logger.info(`[Voice 24/7] Disconnected in ${guild.id}. Reconnecting in 10s...`);
-                connection.destroy();
+                // Connection died. Destroy and try to reconnect instantly
+                logger.info(`[Voice 24/7] Disconnected in ${guild.id}. Reconnecting instantly...`);
+                if (connection.state.status !== VoiceConnectionStatus.Destroyed) {
+                    connection.destroy();
+                }
                 
                 setTimeout(async () => {
                     const savedId = await getSavedVoiceChannel(client, guild.id);
@@ -64,7 +91,7 @@ export async function joinAndMaintain(client, guild, channelId) {
                         logger.info(`[Voice 24/7] Auto-reconnecting to channel ${savedId}...`);
                         joinAndMaintain(client, guild, savedId);
                     }
-                }, 3000);
+                }, 1000);
             }
         });
 
